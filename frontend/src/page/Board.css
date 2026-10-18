@@ -1,0 +1,375 @@
+* {
+  box-sizing: border-box;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+/* ============ 顶部导航 ============ */
+.topnav {
+  flex: 0 0 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  z-index: 10;
+}
+
+.topnav-brand {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.topnav-menu {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.topnav-item {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #475569;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topnav-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.topnav-item.is-active {
+  background: #6366f1;
+  color: #fff;
+}
+
+.topnav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topnav-count {
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* ============ 主体 ============ */
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ============ 左侧子导航 ============ */
+.subnav {
+  flex: 0 0 260px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+}
+
+.subnav-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #94a3b8;
+}
+
+.subnav-list {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subnav-item {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  text-align: left;
+  color: #475569;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.subnav-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.subnav-item.is-active {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.subnav-divider {
+  height: 1px;
+  margin: 16px 0;
+  background: #e2e8f0;
+}
+
+.subnav-subtitle {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #94a3b8;
+}
+
+/* ============ 产品列表 ============ */
+.product-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.product-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  font: inherit;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+.product-item:hover {
+  border-color: #6366f1;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
+}
+
+.product-thumb {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1f5f9;
+  font-size: 18px;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-name {
+  font-size: 14px;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-price {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.plus {
+  font-size: 20px;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+.loading {
+  padding: 12px 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+/* ============ 白板区域 ============ */
+.board-area {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+}
+
+.board {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background-color: #fff;
+  background-image: linear-gradient(#eef2f7 1px, transparent 1px),
+    linear-gradient(90deg, #eef2f7 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.board-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  color: #cbd5e1;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ============ 白板卡片 ============ */
+.board-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.board-card:hover {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+}
+
+.board-card:active {
+  cursor: grabbing;
+}
+
+.board-card.is-selected {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18),
+    0 10px 24px rgba(15, 23, 42, 0.14);
+}
+
+.card-emoji {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f1f5f9;
+  font-size: 20px;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+.card-emoji img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-name {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.card-price {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.card-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #64748b;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.card-remove:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* ============ 通用小按钮 ============ */
+.ghost-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.ghost-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

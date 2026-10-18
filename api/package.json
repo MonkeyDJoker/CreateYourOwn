@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "json-server": "^0.17.4"
+  }
+}
