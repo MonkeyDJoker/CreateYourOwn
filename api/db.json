@@ -1,34 +1,6 @@
 {
   "products": [
     {
-      "id": "p1",
-      "name": "Coffee Machine",
-      "price": 899,
-      "category": "Home Appliances",
-      "description": "Compact espresso machine",
-      "subCategory": "Kitchen",
-      "imageUrl": "",
-      "createdAt": 1700000000000
-    },
-    {
-      "id": "p2",
-      "name": "Bluetooth Speaker",
-      "price": 399,
-      "category": "Electronics",
-      "description": "Portable speaker with deep bass",
-      "subCategory": "Audio",
-      "imageUrl": "",
-      "createdAt": 1700000001000
-    },
-    {
-      "name": "money",
-      "price": 89,
-      "category": "Other",
-      "subCategory": "Misc",
-      "description": "test",
-      "id": "eHaLzir"
-    },
-    {
       "name": "power bank",
       "price": 99,
       "category": "Accessories",

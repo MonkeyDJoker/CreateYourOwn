@@ -1,11 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
 import { getProducts } from '../services/product';
 import { CATEGORY_TREE } from '../constants/categories';
 import './Board.css';
 
-const CARD_W = 128;
-const CARD_H = 128;
+const A5_W = 1480; // A5 导出宽度（像素）
+const A5_H = 2100; // A5 导出高度（像素）
+
+// 卡片默认展示尺寸（白板坐标系下）
+const DEFAULT_CARD_W = 260;
+const DEFAULT_CARD_H = 260;
 
 export default function Board() {
   const navigate = useNavigate();
@@ -16,8 +27,8 @@ export default function Board() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [selectedUid, setSelectedUid] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
-  // 当前选中的大分类 / 小分类
   const [activeCategory, setActiveCategory] = useState('Electronics');
   const [activeSub, setActiveSub] = useState('Audio');
 
@@ -37,7 +48,6 @@ export default function Board() {
     };
   }, []);
 
-  /* ---------- 按分类过滤产品 ---------- */
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const cat = p.category || 'Other';
@@ -46,75 +56,172 @@ export default function Board() {
     });
   }, [products, activeCategory, activeSub]);
 
-  /* ---------- 拖拽逻辑 ---------- */
+  /* =====================================================
+     通用拖拽 / 缩放 / 旋转逻辑
+     每个 item 结构：
+     {
+       uid, productId,
+       x, y,           // 左上角位置（白板坐标）
+       width, height,  // 展示尺寸
+       rotation,       // 旋转角度（度）
+       zIndex,         // 图层顺序
+     }
+     ===================================================== */
+
+  const getBoardRect = () => boardRef.current?.getBoundingClientRect();
+
+  /* ---------- 移动 ---------- */
+  const onMoveStart = (e, item) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const rect = getBoardRect();
+    if (!rect) return;
+
+    dragRef.current = {
+      mode: 'move',
+      uid: item.uid,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: item.x,
+      originY: item.y,
+    };
+    setSelectedUid(item.uid);
+    attachListeners();
+  };
+
+  /* ---------- 缩放 ---------- */
+  const onResizeStart = (e, item) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    dragRef.current = {
+      mode: 'resize',
+      uid: item.uid,
+      startX: e.clientX,
+      startY: e.clientY,
+      originW: item.width,
+      originH: item.height,
+    };
+    setSelectedUid(item.uid);
+    attachListeners();
+  };
+
+  /* ---------- 旋转 ---------- */
+  const onRotateStart = (e, item) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const boardRect = getBoardRect();
+    if (!boardRect) return;
+
+    // 卡片中心点（屏幕坐标）
+    const cx = boardRect.left + item.x + item.width / 2;
+    const cy = boardRect.top + item.y + item.height / 2;
+
+    dragRef.current = {
+      mode: 'rotate',
+      uid: item.uid,
+      centerX: cx,
+      centerY: cy,
+    };
+    setSelectedUid(item.uid);
+    attachListeners();
+  };
+
+  const attachListeners = () => {
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    document.body.style.userSelect = 'none';
+  };
+
   const handleMouseMove = useCallback((e) => {
     const drag = dragRef.current;
-    const board = boardRef.current;
-    if (!drag || !board) return;
+    const rect = getBoardRect();
+    if (!drag || !rect) return;
 
-    const rect = board.getBoundingClientRect();
-    let x = e.clientX - rect.left - drag.offsetX;
-    let y = e.clientY - rect.top - drag.offsetY;
+    if (drag.mode === 'move') {
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      setItems((prev) =>
+        prev.map((it) => {
+          if (it.uid !== drag.uid) return it;
+          // 允许部分超出边界，但至少留 40px 在板内
+          const minVisible = 40;
+          let x = drag.originX + dx;
+          let y = drag.originY + dy;
+          x = Math.max(
+            -it.width + minVisible,
+            Math.min(x, rect.width - minVisible),
+          );
+          y = Math.max(
+            -it.height + minVisible,
+            Math.min(y, rect.height - minVisible),
+          );
+          return { ...it, x, y };
+        }),
+      );
+    }
 
-    x = Math.max(0, Math.min(x, rect.width - CARD_W));
-    y = Math.max(0, Math.min(y, rect.height - CARD_H));
+    if (drag.mode === 'resize') {
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      setItems((prev) =>
+        prev.map((it) => {
+          if (it.uid !== drag.uid) return it;
+          const w = Math.max(60, drag.originW + dx);
+          const h = Math.max(60, drag.originH + dy);
+          return { ...it, width: w, height: h };
+        }),
+      );
+    }
 
-    setItems((prev) =>
-      prev.map((it) => (it.uid === drag.uid ? { ...it, x, y } : it)),
-    );
+    if (drag.mode === 'rotate') {
+      const angle =
+        (Math.atan2(e.clientY - drag.centerY, e.clientX - drag.centerX) *
+          180) /
+        Math.PI;
+      // 让“手柄方向”直接对应角度
+      const rotation = angle + 90;
+      setItems((prev) =>
+        prev.map((it) =>
+          it.uid === drag.uid ? { ...it, rotation } : it,
+        ),
+      );
+    }
   }, []);
 
-  const endDrag = useCallback(() => {
+  const handleMouseUp = useCallback(() => {
     dragRef.current = null;
     window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', endDrag);
+    window.removeEventListener('mouseup', handleMouseUp);
     document.body.style.userSelect = '';
   }, [handleMouseMove]);
 
   useEffect(() => {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', endDrag);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleMouseMove, endDrag]);
-
-  const startDrag = (e, item) => {
-    if (e.button !== 0) return;
-    const board = boardRef.current;
-    if (!board) return;
-
-    const rect = board.getBoundingClientRect();
-    dragRef.current = {
-      uid: item.uid,
-      offsetX: e.clientX - rect.left - item.x,
-      offsetY: e.clientY - rect.top - item.y,
-    };
-    setSelectedUid(item.uid);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', endDrag);
-    document.body.style.userSelect = 'none';
-  };
+  }, [handleMouseMove, handleMouseUp]);
 
   /* ---------- 添加 / 删除 ---------- */
   const addProduct = (product) => {
-    const board = boardRef.current;
-    const rect = board?.getBoundingClientRect();
-    const w = rect?.width ?? 900;
-    const h = rect?.height ?? 600;
-
+    const maxZ = items.reduce((m, it) => Math.max(m, it.zIndex), 0);
     const uid = `${product.id}-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 7)}`;
 
     setItems((prev) => {
-      const step = (prev.length % 6) * 28;
+      const step = (prev.length % 6) * 24;
       return [
         ...prev,
         {
           uid,
           productId: product.id,
-          x: Math.min(40 + step, Math.max(0, w - CARD_W - 20)),
-          y: Math.min(40 + step, Math.max(0, h - CARD_H - 20)),
+          x: 60 + step,
+          y: 60 + step,
+          width: DEFAULT_CARD_W,
+          height: DEFAULT_CARD_H,
+          rotation: 0,
+          zIndex: Math.max(1, maxZ + 1),
         },
       ];
     });
@@ -131,11 +238,91 @@ export default function Board() {
     setItems([]);
     setSelectedUid(null);
   };
-return (
+
+  /* ---------- 图层 ---------- */
+  /* ---------- 图层：与相邻层交换 ---------- */
+const bringForward = () => {
+  if (!selectedUid) return;
+  setItems((prev) => {
+    const sorted = [...prev].sort((a, b) => a.zIndex - b.zIndex);
+    const idx = sorted.findIndex((it) => it.uid === selectedUid);
+    if (idx === -1 || idx === sorted.length - 1) return prev; // 已经是最上层
+
+    // 与上一层交换 zIndex
+    const current = sorted[idx];
+    const above = sorted[idx + 1];
+    return prev.map((it) => {
+      if (it.uid === current.uid) return { ...it, zIndex: above.zIndex };
+      if (it.uid === above.uid) return { ...it, zIndex: current.zIndex };
+      return it;
+    });
+  });
+};
+
+const sendBackward = () => {
+  if (!selectedUid) return;
+  setItems((prev) => {
+    const sorted = [...prev].sort((a, b) => a.zIndex - b.zIndex);
+    const idx = sorted.findIndex((it) => it.uid === selectedUid);
+    if (idx === -1 || idx === 0) return prev; // 已经是最下层
+
+    // 与下一层交换 zIndex
+    const current = sorted[idx];
+    const below = sorted[idx - 1];
+    return prev.map((it) => {
+      if (it.uid === current.uid) return { ...it, zIndex: below.zIndex };
+      if (it.uid === below.uid) return { ...it, zIndex: current.zIndex };
+      return it;
+    });
+  });
+};
+
+  /* ---------- 导出 A5 图片 ---------- */
+  const downloadDesign = async () => {
+    if (!boardRef.current) return;
+    setSelectedUid(null);
+    setExporting(true);
+
+    // 等一帧，确保选中框消失
+    await new Promise((r) => setTimeout(r, 50));
+
+    try {
+      const boardEl = boardRef.current;
+      const rect = boardEl.getBoundingClientRect();
+      // 导出时把白板按 A5 真实尺寸渲染
+      const scale = A5_W / rect.width;
+
+      const canvas = await html2canvas(boardEl, {
+        backgroundColor: '#ffffff',
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        width: rect.width,
+        height: rect.height,
+        windowWidth: rect.width * scale,
+        windowHeight: rect.height * scale,
+      });
+
+      const link = document.createElement('a');
+      link.download = `product-board-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Export failed, please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  /* ---------- 选中卡片引用（用于工具栏） ---------- */
+  const selectedItem = items.find((it) => it.uid === selectedUid);
+
+  return (
     <div className="app-shell">
+      {/* 顶部导航 */}
       <header className="topnav">
         <div className="topnav-brand">Product Board</div>
-
         <nav className="topnav-menu">
           {Object.keys(CATEGORY_TREE).map((cat) => (
             <button
@@ -152,18 +339,31 @@ return (
             </button>
           ))}
         </nav>
-
         <div className="topnav-right">
           <span className="topnav-count">{items.length} on board</span>
+          {selectedItem && (
+            <>
+              <button className="ghost-btn" onClick={bringForward}>
+                Bring Forward
+              </button>
+              <button className="ghost-btn" onClick={sendBackward}>
+                Send Backward
+              </button>
+            </>
+          )}
           <button
             className="ghost-btn"
-            onClick={() => {
-              setItems([]);
-              setSelectedUid(null);
-            }}
+            onClick={downloadDesign}
+            disabled={exporting || items.length === 0}
+          >
+            {exporting ? 'Exporting...' : 'Download'}
+          </button>
+          <button
+            className="ghost-btn"
+            onClick={clearAll}
             disabled={items.length === 0}
           >
-            Clear Board
+            Clear
           </button>
           <button className="ghost-btn" onClick={() => navigate('/')}>
             Home
@@ -172,6 +372,7 @@ return (
       </header>
 
       <div className="app-body">
+        {/* 左侧子导航 */}
         <aside className="subnav">
           <h3 className="subnav-title">{activeCategory}</h3>
           <ul className="subnav-list">
@@ -188,9 +389,7 @@ return (
               </li>
             ))}
           </ul>
-
           <div className="subnav-divider" />
-
           <h4 className="subnav-subtitle">Products</h4>
           {loading ? (
             <div className="loading">Loading...</div>
@@ -225,56 +424,85 @@ return (
           )}
         </aside>
 
+        {/* 右侧白板（A5 比例） */}
         <main className="board-area">
-          <div className="board" ref={boardRef}>
-            {items.length === 0 && (
-              <div className="board-empty">
-                Click a product on the left to place it on the board
-              </div>
-            )}
+          <div className="board-stage">
+            <div className="board" ref={boardRef}>
+              {items.length === 0 && (
+                <div className="board-empty">
+                  Click a product on the left to place it here
+                </div>
+              )}
 
-            {items.map((item) => {
-              const p = products.find((x) => x.id === item.productId);
-              if (!p) return null;
-              return (
-                <div
-                  key={item.uid}
-                  className={`board-card ${
-                    selectedUid === item.uid ? 'is-selected' : ''
-                  }`}
-                  style={{
-                    left: item.x,
-                    top: item.y,
-                    width: CARD_W,
-                    height: CARD_H,
-                  }}
-                  onMouseDown={(e) => startDrag(e, item)}
-                >
-                  <button
-                    className="card-remove"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => removeItem(item.uid, e)}
-                    title="Remove"
+              {items.map((item) => {
+                const p = products.find((x) => x.id === item.productId);
+                if (!p) return null;
+                const isSelected = selectedUid === item.uid;
+
+                return (
+                  <div
+                    key={item.uid}
+                    className={`board-card ${isSelected ? 'is-selected' : ''}`}
+                    style={{
+                      left: item.x,
+                      top: item.y,
+                      width: item.width,
+                      height: item.height,
+                      zIndex: item.zIndex,
+                      transform: `rotate(${item.rotation}deg)`,
+                    }}
+                    onMouseDown={(e) => onMoveStart(e, item)}
                   >
-                    ×
-                  </button>
-                  <div className="card-emoji">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} />
-                    ) : (
-                      <span>{p.name.charAt(0)}</span>
+                    {/* 图片本体 */}
+                    <div className="card-image">
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          draggable={false}
+                          crossOrigin="anonymous"
+                        />
+                      ) : (
+                        <span className="card-placeholder">
+                          {p.name.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 删除按钮 */}
+                    <button
+                      className="card-remove"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => removeItem(item.uid, e)}
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+
+                    {/* 选中态：旋转手柄 + 缩放手柄 */}
+                    {isSelected && (
+                      <>
+                        <div
+                          className="handle handle-rotate"
+                          onMouseDown={(e) => onRotateStart(e, item)}
+                          title="Rotate"
+                        >
+                          ⟳
+                        </div>
+                        <div
+                          className="handle handle-resize"
+                          onMouseDown={(e) => onResizeStart(e, item)}
+                          title="Resize"
+                        />
+                      </>
                     )}
                   </div>
-                  <div className="card-name">{p.name}</div>
-                  <div className="card-price">${p.price}</div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </main>
       </div>
     </div>
   );
 }
-  
-
