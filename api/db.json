@@ -1,14 +1,3 @@
 {
-  "products": [
-    {
-      "name": "power bank",
-      "price": 99,
-      "category": "Accessories",
-      "description": "5000mAh Power bank",
-      "subCategory": "Chargers",
-      "imageUrl": "http://localhost:3000/uploads/img_1791620278372.jpeg",
-      "createdAt": 1791620278376,
-      "id": "i4ibUFE"
-    }
-  ]
+  "products": []
 }
